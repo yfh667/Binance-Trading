@@ -1,33 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Feb  6 12:07:35 2024
+Created on Thu Feb 22 22:12:11 2024
 
 @author: alen
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jan 21 13:10:55 2024
-
-@author: yfh
-"""
-# from tqdm import tqdm
-# import requests
-# import json
-# import pandas as pd
-# import requests
-# import time
-# #import config
-# import pytz
-# from datetime import datetime
-
-# from binance.client import Client
-# import requests
-# import time
-# import requests
-# import json
-# import concurrent.futures
 
 
 from tqdm import tqdm
@@ -189,11 +167,58 @@ def find_open_price_in_range_with_time(df, coin):
     latest_open_price = float(latest_data['open'])  # 确保开盘价是浮点数格式
     latest_open_time = latest_data['open_time']
     
-    # 检查开盘价是否在0.5到0.7之间 
+    # 检查开盘价是否在0.5到0.7之间
     if 0.5 <= latest_open_price <= 0.7:
         return coin, latest_open_time  # 返回币种名称和时间
     else:
         return None, None  # 不满足条件，返回None
+def find_recent_profitable_days(df, coin):
+    # 确保数据是按时间升序排序的，最近的数据在最后
+    df = df.sort_values(by='open_time')
+    
+    # 获取最近三天的K线数据
+    recent_data = df.tail(3)
+    
+    # 检查最近三天是否都是盈利的（开盘价低于收盘价）
+    all_profitable = all(recent_data['open'] < recent_data['close'])
+    
+    if all_profitable:
+        # 获取最近一天的数据的开盘时间
+        latest_open_time = recent_data.iloc[-1]['open_time']
+        return coin, latest_open_time  # 返回币种名称和最近一天的开盘时间
+    else:
+        return None, None  # 不满足条件，返回None
+
+def find_recent_price_range_with_growth(df, coin):
+    # 确保数据是按时间升序排序的，最近的数据在最后
+    df = df.sort_values(by='open_time')
+    
+    # 确保'open'和'close'列是浮点数类型
+    df['open'] = df['open'].astype(float)
+    df['close'] = df['close'].astype(float)
+    
+    # 获取最近7天的K线数据（不包括今天）
+    recent_data = df.iloc[-8:-1]  # 假设最后一行是今天的数据，那么我们不包括它
+    
+    if len(recent_data) < 7:
+        # 如果数据不足7天，返回None
+        return None, None
+    
+    # 找出最近7天的最低开盘价和最高收盘价
+    min_open_price = recent_data['open'].min()
+    max_close_price = recent_data['close'].max()
+    
+    # 计算涨幅
+    growth_rate = (max_close_price - min_open_price) / min_open_price
+    
+    if growth_rate < 0.3:
+        # 如果涨幅没有达到30%，获取最近一天的数据的开盘时间
+        latest_open_time = recent_data.iloc[-1]['open_time']
+        return coin, latest_open_time.strftime("%Y-%m-%d %H:%M:%S")  # 格式化时间为字符串
+    else:
+        # 如果涨幅达到或超过30%，返回None
+        return None, None
+
 
 # 示例调用（你需要替换这里的df和coin为实际的DataFrame和币种名称）
 # coin, time = find_open_price_in_range_with_time(df, 'BTCUSDT')
@@ -203,7 +228,7 @@ def find_open_price_in_range_with_time(df, coin):
 
     
 def fetch_daily_data_all_13w_with_retry(coin):
-    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1w&limit=12'
+    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1d&limit=8'
     
     session = requests.Session()
     retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 429])
@@ -243,7 +268,7 @@ def fetch_daily_data_all_13w_with_retry(coin):
 def check_coins_for_nonnormal_growth(all_coins):
     for coin in all_coins:
         daily_data = fetch_daily_data_all_13w_with_retry(coin)
-        abnormal_coin, max_volume_time = find_open_price_in_range_with_time(daily_data, coin)
+        abnormal_coin, max_volume_time = find_recent_price_range_with_growth(daily_data, coin)
         if abnormal_coin:
             print(f"发现异常成交量的币种: {abnormal_coin}, 时间: {max_volume_time}")
         # 当没有发现异常成交量时，这里不会有任何输出

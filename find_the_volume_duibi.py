@@ -189,11 +189,44 @@ def find_open_price_in_range_with_time(df, coin):
     latest_open_price = float(latest_data['open'])  # 确保开盘价是浮点数格式
     latest_open_time = latest_data['open_time']
     
-    # 检查开盘价是否在0.5到0.7之间 
+    # 检查开盘价是否在0.5到0.7之间
     if 0.5 <= latest_open_price <= 0.7:
         return coin, latest_open_time  # 返回币种名称和时间
     else:
         return None, None  # 不满足条件，返回None
+
+
+def check_coin_profitability_and_latest_open_time(df, coin_name):
+    # 首先，确保是在原始 DataFrame 上操作
+    df = df.copy()
+    
+    # 确保数据是按时间升序排序的
+    df.loc[:, 'open_time'] = pd.to_datetime(df['open_time'])
+    df = df.sort_values(by='open_time')
+    
+    # 将'low'列转换为数值类型
+    df.loc[:, 'low'] = pd.to_numeric(df['low'], errors='coerce')
+    
+    # 过滤出最低价在指定范围内的数据，并创建一个副本以避免 SettingWithCopyWarning
+    df_filtered = df[(df['low'] > 0.05) & (df['low'] < 2)].copy()
+    
+    if df_filtered.empty:
+        return None, f"{coin_name} - 不满足最低价条件"
+    
+    profit_weeks = (df_filtered['open'] < df_filtered['close']).sum()
+    loss_weeks = (df_filtered['open'] > df_filtered['close']).sum()
+    
+    if len(df_filtered) < 13:
+        return None, f"{coin_name} - 数据不足以覆盖13周"
+    
+    if profit_weeks > loss_weeks:
+        latest_open_time = df_filtered.iloc[-1]['open_time']
+        return coin_name, f"满足条件, 最近开盘时间: {latest_open_time.strftime('%Y-%m-%d %H:%M:%S')}"
+    else:
+        return None, f"{coin_name} - 不满足条件"
+
+
+
 
 # 示例调用（你需要替换这里的df和coin为实际的DataFrame和币种名称）
 # coin, time = find_open_price_in_range_with_time(df, 'BTCUSDT')
@@ -203,7 +236,7 @@ def find_open_price_in_range_with_time(df, coin):
 
     
 def fetch_daily_data_all_13w_with_retry(coin):
-    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1w&limit=12'
+    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1w&limit=13'
     
     session = requests.Session()
     retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 429])
@@ -239,14 +272,18 @@ def fetch_daily_data_all_13w_with_retry(coin):
 #         if find_4h_nonnormal(daily_data):
 #             print(coin)
 #         time.sleep(1)  # 在每次API请求之后等待1秒
-
 def check_coins_for_nonnormal_growth(all_coins):
     for coin in all_coins:
         daily_data = fetch_daily_data_all_13w_with_retry(coin)
-        abnormal_coin, max_volume_time = find_open_price_in_range_with_time(daily_data, coin)
-        if abnormal_coin:
-            print(f"发现异常成交量的币种: {abnormal_coin}, 时间: {max_volume_time}")
-        # 当没有发现异常成交量时，这里不会有任何输出
+        if not daily_data.empty:
+            daily_data['low'] = pd.to_numeric(daily_data['low'], errors='coerce')
+            df_filtered = daily_data[(daily_data['low'] > 0.05) & (daily_data['low'] < 2)]
+            
+            if not df_filtered.empty:
+                abnormal_coin, message = check_coin_profitability_and_latest_open_time(df_filtered, coin)
+                if abnormal_coin:
+                    print(f"满足条件的币种: {abnormal_coin}, 信息: {message}")
+
 
 
 def find_ten_wrapper(coin, progress=None):

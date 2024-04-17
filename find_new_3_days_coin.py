@@ -1,33 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb  6 12:07:35 2024
-
-@author: alen
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jan 21 13:10:55 2024
-
-@author: yfh
-"""
-# from tqdm import tqdm
-# import requests
-# import json
-# import pandas as pd
-# import requests
-# import time
-# #import config
-# import pytz
-# from datetime import datetime
-
-# from binance.client import Client
-# import requests
-# import time
-# import requests
-# import json
-# import concurrent.futures
 
 
 from tqdm import tqdm
@@ -189,9 +159,25 @@ def find_open_price_in_range_with_time(df, coin):
     latest_open_price = float(latest_data['open'])  # 确保开盘价是浮点数格式
     latest_open_time = latest_data['open_time']
     
-    # 检查开盘价是否在0.5到0.7之间 
+    # 检查开盘价是否在0.5到0.7之间
     if 0.5 <= latest_open_price <= 0.7:
         return coin, latest_open_time  # 返回币种名称和时间
+    else:
+        return None, None  # 不满足条件，返回None
+def find_recent_profitable_days(df, coin):
+    # 确保数据是按时间升序排序的，最近的数据在最后
+    df = df.sort_values(by='open_time')
+    
+    # 获取最近三天的K线数据
+    recent_data = df.tail(3)
+    
+    # 检查最近三天是否都是盈利的（开盘价低于收盘价）
+    all_profitable = all(recent_data['open'] < recent_data['close'])
+    
+    if all_profitable:
+        # 获取最近一天的数据的开盘时间
+        latest_open_time = recent_data.iloc[-1]['open_time']
+        return coin, latest_open_time  # 返回币种名称和最近一天的开盘时间
     else:
         return None, None  # 不满足条件，返回None
 
@@ -203,7 +189,7 @@ def find_open_price_in_range_with_time(df, coin):
 
     
 def fetch_daily_data_all_13w_with_retry(coin):
-    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1w&limit=12'
+    url = f'https://api.binance.com/api/v3/klines?symbol={coin}&interval=1d&limit=13'
     
     session = requests.Session()
     retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504, 429])
@@ -243,7 +229,7 @@ def fetch_daily_data_all_13w_with_retry(coin):
 def check_coins_for_nonnormal_growth(all_coins):
     for coin in all_coins:
         daily_data = fetch_daily_data_all_13w_with_retry(coin)
-        abnormal_coin, max_volume_time = find_open_price_in_range_with_time(daily_data, coin)
+        abnormal_coin, max_volume_time = find_recent_profitable_days(daily_data, coin)
         if abnormal_coin:
             print(f"发现异常成交量的币种: {abnormal_coin}, 时间: {max_volume_time}")
         # 当没有发现异常成交量时，这里不会有任何输出
