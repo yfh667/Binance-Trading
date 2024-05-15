@@ -96,13 +96,13 @@ def fetch_token_pools(chain, address):
     
 # 使用示例
 chain = "solana"
-address = "Bbtv2A2Vqze8VE7YXm9YVwtE6Zkvn9hzsSZGNcFLSKjR"
+address = "6a9oxxw3NY4iGYLJGA52TiTB3rBvhJjBjxmv9H7MpTZH"
 # token_details = get_token_details(chain, address)
 # price_info = fetch_token_price( address)
 # if price_info:
 #     print(price_info)
 # else:
 #     print("Failed to fetch price information.")
-price = fetch_token_price_gek('EZUFNJMZTBpungQX2czEb9ZyCMjtdzsDGMK4UywDUa1F')
+price = fetch_token_price_gek('6a9oxxw3NY4iGYLJGA52TiTB3rBvhJjBjxmv9H7MpTZH')
 
 

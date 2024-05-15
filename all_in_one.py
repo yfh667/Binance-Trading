@@ -14,9 +14,9 @@ from requests.packages.urllib3.util.retry import Retry
 # 使用参数
 chain_id = "solana"
 sort_by = "socialsInfoUpdated"
-
-
 key = 'FC\n'
+
+#key = '\n'
 # 内容
 content = '加仓'
 # url
@@ -151,25 +151,52 @@ def fetch_all_tokens(db_name):
 #         return response.json()
 #     else:
 #         return None
+
+
+
+# def fetch_token_prices(chain, addresses):
+#     addresses_str = ','.join(addresses)
+#     url = f"https://api.geckoterminal.com/api/v2/networks/{chain}/tokens/multi/{addresses_str}"
+#     headers = {'accept': 'application/json'}
+
+#     session = requests.Session()
+#     retries = Retry(total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+#     session.mount('https://', HTTPAdapter(max_retries=retries))
+
+#     try:
+#         response = session.get(url, headers=headers, timeout=10)
+#         if response.status_code == 200:
+#             return response.json()
+#         else:
+#             return None
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error fetching data: {e}")
+#         return None
 def fetch_token_prices(chain, addresses):
+    # 过滤无效地址
+    addresses = [addr for addr in addresses if addr]
+    if not addresses:
+        print("No valid addresses provided.")
+        return None
     addresses_str = ','.join(addresses)
+    
     url = f"https://api.geckoterminal.com/api/v2/networks/{chain}/tokens/multi/{addresses_str}"
     headers = {'accept': 'application/json'}
-
+    
     session = requests.Session()
     retries = Retry(total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
     session.mount('https://', HTTPAdapter(max_retries=retries))
-
+    
     try:
         response = session.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             return response.json()
         else:
+            print(f"Failed to fetch token prices: {response.status_code} {response.text}")
             return None
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
         return None
-
 
 
 def store_prices(db_name, prices):
@@ -396,7 +423,7 @@ def analyze_and_alert_prices(db_name, token_id,address):
            
             print("find")
             message_content = (
-                f"Token ID: {token_id}:{address} has increased significantly!\n"
+                f"{address}\n"
                 f"Old Average Price: {average_price:.8f}\n"
                 f"New Price: {latest_price}"
             )
@@ -411,7 +438,7 @@ def db_token_price_analysy(db_name):
        
                 
 def main(db_name):
-    for i in range(1):
+    while(1):
         updatetoken(db_name)
         updateprice(db_name)
         db_token_price_analysy(db_name)

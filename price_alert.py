@@ -152,7 +152,7 @@ def analyze_and_alert_prices(db_name, token_id,address):
            
             print("find")
             message_content = (
-                f"Token ID: {token_id}:{address} has increased significantly!\n"
+                f"{address}\n"
                 f"Old Average Price: {average_price:.8f}\n"
                 f"New Price: {latest_price}"
             )
