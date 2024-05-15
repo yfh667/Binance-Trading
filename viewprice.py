@@ -30,8 +30,7 @@ def print_table_schema(db_name):
     conn.close()
 
 # 使用函数获取 token ID 为 1 的历史价格
-history = get_price_history_by_token_id('my1.db', 1)
-print_table_schema('my1.db')
+history = get_price_history_by_token_id('test.db', 1)
 # 打印历史价格数据
 print("Historical Prices for Token ID 1:")
 for price, timestamp in history:

@@ -7,7 +7,7 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
 
-def init_db(db_name='test.db'):
+def init_db(db_name='test1.db'):
     with sqlite3.connect(db_name) as conn:
         cursor = conn.cursor()
         cursor.execute('''
